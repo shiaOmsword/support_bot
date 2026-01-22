@@ -8,8 +8,18 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import settings
 from di.container import build_container, Container
 from presentation.routers import build_root_router
-
+from presentation.middlewares.throttling import ThrottlingMiddleware
 from infrastructure.db.base import Base
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    handlers=[
+        logging.FileHandler("bot.log", encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
 
 class DIMiddleware:
     def __init__(self, container: Container):
@@ -36,6 +46,7 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.update.middleware(DIMiddleware(container))
+    dp.callback_query.middleware(ThrottlingMiddleware(rate_limit_seconds=1.0)) 
     dp.include_router(build_root_router())
 
     await dp.start_polling(bot)

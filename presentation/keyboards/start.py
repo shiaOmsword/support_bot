@@ -8,9 +8,9 @@ def role_keyboard() -> InlineKeyboardMarkup:
     kb.adjust(1)
     return kb.as_markup()
 
-def open_chat_keyboard(url: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Открыть чат", url=url)]
-        ]
-    )
+def support_keyboard(url: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Открыть чат", url=url)
+    kb.button(text="⬅️ Назад", callback_data="back:roles")
+    kb.adjust(1)
+    return kb.as_markup()

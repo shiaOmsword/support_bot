@@ -9,5 +9,6 @@ class UserChoiceRepository:
                 user_id=choice.user_id,
                 username=choice.username,
                 role=choice.role.value,
+                created_at=choice.created_at,  # <-- добавили
             )
         )
