@@ -22,10 +22,17 @@ def build_container() -> Container:
     repo = UserChoiceRepository()
 
     routing = RoutingService(
-        advertiser_url=str(settings.advertiser_chat_url),
-        owner_url=str(settings.owner_chat_url),
-        uow=uow,
-        repo=repo,
+        owner_deliver_chat_id=settings.owner_deliver_chat_id,
+        owner_open_url=str(settings.owner_open_url),
+        owner_thread_id=settings.owner_thread_id,
+
+        adv_new_deliver_chat_id=settings.adv_new_deliver_chat_id,
+        adv_new_open_url=str(settings.adv_new_open_url),
+        adv_new_thread_id=settings.adv_new_thread_id,
+
+        adv_existing_deliver_chat_id=settings.adv_existing_deliver_chat_id,
+        adv_existing_open_url=str(settings.adv_existing_open_url),
+        adv_existing_thread_id=settings.adv_existing_thread_id,
     )
 
     return Container(

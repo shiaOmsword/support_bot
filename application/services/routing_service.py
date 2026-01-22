@@ -1,35 +1,34 @@
-from datetime import datetime, timezone
-from domain.enums import UserRole
-from domain.entities import UserChoice
-from infrastructure.db.repo import UserChoiceRepository
-from infrastructure.db.uow import UnitOfWork
+from dataclasses import dataclass
+from domain.enums import UserRole, AdvertiserType
 
+@dataclass(frozen=True)
+class RouteTarget:
+    deliver_chat_id: int
+    open_url: str
+    thread_id: int | None = None
+    
 class RoutingService:
     def __init__(
         self,
-        advertiser_url: str,
-        owner_url: str,
-        uow: UnitOfWork,
-        repo: UserChoiceRepository,
+        owner_deliver_chat_id: int,
+        owner_open_url: str,
+        owner_thread_id: int | None,
+        adv_new_deliver_chat_id: int,
+        adv_new_open_url: str,
+        adv_new_thread_id: int | None,
+        adv_existing_deliver_chat_id: int,
+        adv_existing_open_url: str,
+        adv_existing_thread_id: int | None,
     ):
-        self._advertiser_url = advertiser_url
-        self._owner_url = owner_url
-        self._uow = uow
-        self._repo = repo
+        self._targets = {
+            ("channel_owner", None): RouteTarget(owner_deliver_chat_id, owner_open_url, owner_thread_id),
+            ("advertiser", "new"): RouteTarget(adv_new_deliver_chat_id, adv_new_open_url, adv_new_thread_id),
+            ("advertiser", "existing"): RouteTarget(adv_existing_deliver_chat_id, adv_existing_open_url, adv_existing_thread_id),
+        }
 
-    def get_target_url(self, role: UserRole) -> str:
-        if role == UserRole.ADVERTISER:
-            return self._advertiser_url
-        if role == UserRole.OWNER:
-            return self._owner_url
-        raise ValueError(f"Unsupported role: {role}")
-
-    async def register_choice(self, user_id: int, username: str | None, role: UserRole) -> None:
-        choice = UserChoice(
-            user_id=user_id,
-            username=username,
-            role=role,
-            created_at=datetime.now(timezone.utc),
-        )
-        async with self._uow.session() as session:
-            await self._repo.add(session, choice)
+    def get_target(self, role: UserRole, adv_type: AdvertiserType | None = None) -> RouteTarget:
+        key = (role.value, adv_type.value if adv_type else None)
+        try:
+            return self._targets[key]
+        except KeyError:
+            raise ValueError(f"No target for role={role} adv_type={adv_type}")

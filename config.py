@@ -1,13 +1,27 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyUrl
+from pydantic import AnyUrl, Field
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="forbid",
+    )
 
-    bot_token: str
-    database_url: str
+    bot_token: str = Field(alias="BOT_TOKEN")
+    database_url: str = Field(alias="DATABASE_URL")
 
-    advertiser_chat_url: AnyUrl
-    owner_chat_url: AnyUrl
+    owner_deliver_chat_id: int = Field(alias="OWNER_DELIVER_CHAT_ID")
+    owner_open_url: AnyUrl = Field(alias="OWNER_OPEN_URL")
+    owner_thread_id: int | None = Field(default=None, alias="OWNER_THREAD_ID")
+
+    adv_new_deliver_chat_id: int = Field(alias="ADV_NEW_DELIVER_CHAT_ID")
+    adv_new_open_url: AnyUrl = Field(alias="ADV_NEW_OPEN_URL")
+    adv_new_thread_id: int | None = Field(default=None, alias="ADV_NEW_THREAD_ID")
+    
+    adv_existing_deliver_chat_id: int = Field(alias="ADV_EXISTING_DELIVER_CHAT_ID")
+    adv_existing_open_url: AnyUrl = Field(alias="ADV_EXISTING_OPEN_URL")
+    adv_existing_thread_id: int | None = Field(default=None, alias="ADV_EXISTING_THREAD_ID")
 
 settings = Settings()
