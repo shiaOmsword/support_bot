@@ -3,8 +3,7 @@ from domain.enums import UserRole
 
 def start_message() -> str:
     return (
-        "Здравствуйте.\n\n"
-        "Выберите, кем вы являетесь — и я переведу вас в нужный чат поддержки."
+        "Добрый день! Я ваш помощник Чуня. Выберите, пожалуйста, ответ. Подключу к Вам нужного специалиста."
     )
 
 
@@ -13,7 +12,7 @@ def choose_role_message() -> str:
 
 
 def processing_message() -> str:
-    return "Перевожу вас на сотрудника поддержки. Пожалуйста, ожидайте…"
+    return "Перенаправляю вас к сотруднику поддержки. Пожалуйста, ожидайте…"
 
 
 def role_result_message(role: UserRole, url: str) -> str:
@@ -30,6 +29,12 @@ def role_result_message(role: UserRole, url: str) -> str:
         f"{url}"
     )
 
+def send_message_to_chat(initial_text:str, user_ref:str) -> str:
+    return (
+            f"Новый запрос от {user_ref}\n"
+            f"Текст: {initial_text}"
+    )
+    
 
 def help_message() -> str:
     return (

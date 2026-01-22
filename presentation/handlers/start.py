@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -9,8 +10,18 @@ from domain.enums import UserRole, AdvertiserType
 from application.services.routing_service import RoutingService
 from presentation.keyboards.start import role_keyboard, advertiser_type_keyboard
 from presentation.states import IntakeFlow
+from presentation.texts.common import (
+    start_message,
+    choose_role_message,
+    processing_message,
+    role_result_message,
+    help_message,
+    about_message,
+    send_message_to_chat,
+)
 
 router = Router()
+log = logging.getLogger(__name__)
 
 async def safe_edit(message: Message, text: str, reply_markup=None):
     try:
@@ -22,18 +33,26 @@ async def safe_edit(message: Message, text: str, reply_markup=None):
 async def start_cmd(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(IntakeFlow.waiting_initial_text)
-    await message.answer("Добрый день! Я ваш помощник Чуня. Выберите, пожалуйста, ответ. Подключу к Вам нужного специалиста.")
+    await message.answer(about_message())
+    
+@router.message(F.text == "/help")
+async def help_cmd(message: Message):
+    await message.answer(help_message())
+    
+@router.message(F.text == "/about")
+async def about_cmd(message: Message):
+    await message.answer(about_message())        
 
 @router.message(IntakeFlow.waiting_initial_text)
 async def intake_initial_text(message: Message, state: FSMContext):
     await state.update_data(initial_text=message.text)
     await state.set_state(IntakeFlow.waiting_role)
-    await message.answer("Кто вы?", reply_markup=role_keyboard())
+    await message.answer(start_message(), reply_markup=role_keyboard())
 
 @router.callback_query(IntakeFlow.waiting_role, F.data == "back:roles")
 async def back_roles_from_role(callback: CallbackQuery):
     await callback.answer()
-    await safe_edit(callback.message, "Кто вы?", reply_markup=role_keyboard())
+    await safe_edit(callback.message, start_message(), reply_markup=role_keyboard())
 
 @router.callback_query(IntakeFlow.waiting_role, F.data.startswith("role:"))
 async def choose_role(callback: CallbackQuery, state: FSMContext, routing: RoutingService):
@@ -52,7 +71,7 @@ async def choose_role(callback: CallbackQuery, state: FSMContext, routing: Routi
 async def back_to_roles(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(IntakeFlow.waiting_role)
-    await safe_edit(callback.message, "Кто вы?", reply_markup=role_keyboard())
+    await safe_edit(callback.message, start_message() , reply_markup=role_keyboard())
 
 @router.callback_query(IntakeFlow.waiting_adv_type, F.data.startswith("adv_type:"))
 async def choose_adv_type(callback: CallbackQuery, state: FSMContext, routing: RoutingService):
@@ -75,8 +94,8 @@ async def route_and_send(
     data = await state.get_data()
     initial_text = data.get("initial_text", "")
 
-    await safe_edit(callback.message, "Перенаправляю вас к сотруднику поддержки. Пожалуйста, ожидайте…")
-    await asyncio.sleep(0.3)
+    await safe_edit(callback.message, processing_message())
+    await asyncio.sleep(0.7)
 
     target = routing.get_target(role, adv_type)
     kwargs = {}
@@ -86,14 +105,18 @@ async def route_and_send(
     
     user = callback.from_user
     user_ref = f"@{user.username}" if user.username else f"user_id={user.id}"
+    
+    log.info(
+        "role_selected user_id=%s username=%s role=%s",
+        user.id,
+        user.username,
+        role.value,
+    )
 
     # Отправляем менеджеру в личку (менеджер должен был нажать /start у бота)
     await callback.bot.send_message(
         chat_id=target.deliver_chat_id,
-        text=(
-            f"Новый запрос от {user_ref}\n"
-            f"Текст: {initial_text}"
-        ),
+        text=send_message_to_chat(initial_text,user_ref),
         **kwargs,
     )
 
@@ -106,11 +129,3 @@ async def route_and_send(
     )
 
     await state.clear()
-
-@router.message(Command("thread"))
-async def show_thread_id(message: Message):
-    # Работает, если команда отправлена внутри темы форума
-    await message.reply(
-        f"chat_id={message.chat.id}\n"
-        f"message_thread_id={message.message_thread_id}"
-    )
