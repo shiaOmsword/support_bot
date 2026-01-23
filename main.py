@@ -9,6 +9,7 @@ from config import settings
 from di.container import build_container, Container
 from presentation.routers import build_root_router
 from presentation.middlewares.throttling import ThrottlingMiddleware
+from presentation.middlewares.message_throttling import MessageThrottlingMiddleware
 from infrastructure.db.base import Base
 import logging
 
@@ -46,6 +47,7 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.update.middleware(DIMiddleware(container))
+    dp.message.middleware(MessageThrottlingMiddleware(rate_limit_seconds=1.0))
     dp.callback_query.middleware(ThrottlingMiddleware(rate_limit_seconds=1.0)) 
     dp.include_router(build_root_router())
 
