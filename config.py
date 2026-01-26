@@ -23,5 +23,8 @@ class Settings(BaseSettings):
     adv_existing_deliver_chat_id: int = Field(alias="ADV_EXISTING_DELIVER_CHAT_ID")
     adv_existing_open_url: AnyUrl = Field(alias="ADV_EXISTING_OPEN_URL")
     adv_existing_thread_id: int | None = Field(default=None, alias="ADV_EXISTING_THREAD_ID")
+    
+    owner_accounting_open_url: AnyUrl = Field(alias="OWNER_ACCOUNTING_OPEN_URL")
+    support_open_url: AnyUrl = Field(alias="SUPPORT_OPEN_URL")
 
 settings = Settings()

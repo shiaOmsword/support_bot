@@ -33,6 +33,8 @@ def build_container() -> Container:
         adv_existing_deliver_chat_id=settings.adv_existing_deliver_chat_id,
         adv_existing_open_url=str(settings.adv_existing_open_url),
         adv_existing_thread_id=settings.adv_existing_thread_id,
+        owner_accounting_open_url=str(settings.owner_accounting_open_url),
+        support_open_url= str(settings.support_open_url),
     )
 
     return Container(

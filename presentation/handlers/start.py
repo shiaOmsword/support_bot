@@ -4,7 +4,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.exceptions import TelegramBadRequest
 
 from config import settings
-from presentation.keyboards.start import role_keyboard, advertiser_type_keyboard
+from presentation.keyboards.start import role_keyboard, advertiser_type_keyboard, owner_type_keyboard, how_to_payment_keyboard
 from presentation.texts.common import start_message, help_message, about_message
 
 router = Router()
@@ -30,7 +30,7 @@ async def safe_edit(message: Message, text: str, reply_markup=None):
 async def start_cmd(message: Message):
     await message.answer(
         start_message(),
-        reply_markup=role_keyboard(str(settings.owner_open_url)),
+        reply_markup=role_keyboard(),
         disable_web_page_preview=True,
     )
 
@@ -50,7 +50,7 @@ async def about_cmd(message: Message):
 async def any_text_show_menu(message: Message):
     await message.answer(
         "Выберите, куда перейти:",
-        reply_markup=role_keyboard(str(settings.owner_open_url)),
+        reply_markup=role_keyboard(),
         disable_web_page_preview=True,
     )
 
@@ -66,7 +66,42 @@ async def advertiser_clicked(callback: CallbackQuery):
             str(settings.adv_existing_open_url),
         )
     )
+    
+@router.callback_query(F.data == "role:owner")
+async def owner_clicked(callback: CallbackQuery):
+    await callback.answer()
+    await safe_edit(
+        callback.message,
+        "Уточните, пожалуйста:",
+        reply_markup=owner_type_keyboard(
+            str(settings.owner_accounting_open_url),
+            str(settings.support_open_url)
+        )
+    )    
 
+@router.callback_query(F.data == "role:owner:how_to_payment")
+async def how_to_get_payment_clicked(callback: CallbackQuery):
+    await callback.answer()
+    await safe_edit(
+        callback.message,
+        "Уточните, пожалуйста:",
+        reply_markup=how_to_payment_keyboard(
+            str(settings.owner_accounting_open_url),
+        )
+    )    
+    
+@router.callback_query(F.data == "back:roles:owner")
+async def back_to_roles_owner(callback: CallbackQuery):
+    await callback.answer()
+    await safe_edit(
+        callback.message,
+        start_message(),
+        reply_markup=owner_type_keyboard(
+            str(settings.owner_accounting_open_url),
+            str(settings.support_open_url)
+        )
+    )    
+    
 
 @router.callback_query(F.data == "back:roles")
 async def back_to_roles(callback: CallbackQuery):
@@ -74,5 +109,5 @@ async def back_to_roles(callback: CallbackQuery):
     await safe_edit(
         callback.message,
         start_message(),
-        reply_markup=role_keyboard(str(settings.owner_open_url)),
+        reply_markup=role_keyboard(),
     )
