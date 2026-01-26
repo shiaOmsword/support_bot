@@ -1,38 +1,28 @@
 import logging
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
-from config import settings
-from presentation.keyboards.start import role_keyboard, advertiser_type_keyboard, owner_type_keyboard, how_to_payment_keyboard
+from application.services.routing_service import RoutingService
+from presentation.ui.callbacks import RoleCb, NavCb, ActCb
+from domain.enums import UserRole
+from presentation.texts.common import send_message_to_chat
+from presentation.ui.nav import get_nav, set_nav
+from presentation.ui.render import safe_edit
+from presentation.ui import screens
 from presentation.texts.common import start_message, help_message, about_message
+from presentation.ui.screens import SCREEN_REGISTRY
 
 router = Router()
 log = logging.getLogger(__name__)
 
 
-async def safe_edit(message: Message, text: str, reply_markup=None):
-    try:
-        await message.edit_text(
-            text=text,
-            reply_markup=reply_markup,
-            disable_web_page_preview=True
-        )
-    except TelegramBadRequest:
-        await message.answer(
-            text=text,
-            reply_markup=reply_markup,
-            disable_web_page_preview=True
-        )
-
-
 @router.message(F.text == "/start")
-async def start_cmd(message: Message):
-    await message.answer(
-        start_message(),
-        reply_markup=role_keyboard(),
-        disable_web_page_preview=True,
-    )
+async def start_cmd(message: Message, state: FSMContext):
+    await state.update_data(nav_stack=["roles"])
+    text, kb = screens.roles_screen()
+    await message.answer(start_message(), reply_markup=kb, disable_web_page_preview=True)
 
 
 @router.message(F.text == "/help")
@@ -45,69 +35,43 @@ async def about_cmd(message: Message):
     await message.answer(about_message())
 
 
-# Если пользователь пишет "здрасьте" или что угодно — просто показываем меню выбора
 @router.message()
-async def any_text_show_menu(message: Message):
-    await message.answer(
-        "Выберите, куда перейти:",
-        reply_markup=role_keyboard(),
-        disable_web_page_preview=True,
-    )
+async def any_text_show_menu(message: Message, state: FSMContext):
+    await state.update_data(nav_stack=["roles"])
+    text, kb = screens.roles_screen()
+    await message.answer("Выберите, куда перейти:", reply_markup=kb, disable_web_page_preview=True)
 
 
-@router.callback_query(F.data == "role:advertiser")
-async def advertiser_clicked(callback: CallbackQuery):
-    await callback.answer()
-    await safe_edit(
-        callback.message,
-        "Уточните, пожалуйста:",
-        reply_markup=advertiser_type_keyboard(
-            str(settings.adv_new_open_url),
-            str(settings.adv_existing_open_url),
-        )
-    )
-    
-@router.callback_query(F.data == "role:owner")
-async def owner_clicked(callback: CallbackQuery):
-    await callback.answer()
-    await safe_edit(
-        callback.message,
-        "Уточните, пожалуйста:",
-        reply_markup=owner_type_keyboard(
-            str(settings.owner_accounting_open_url),
-            str(settings.support_open_url)
-        )
-    )    
+@router.callback_query(RoleCb.filter())
+async def on_role(cq: CallbackQuery, callback_data: RoleCb, state: FSMContext, routing: RoutingService):
+    await cq.answer()
 
-@router.callback_query(F.data == "role:owner:how_to_payment")
-async def how_to_get_payment_clicked(callback: CallbackQuery):
-    await callback.answer()
-    await safe_edit(
-        callback.message,
-        "Уточните, пожалуйста:",
-        reply_markup=how_to_payment_keyboard(
-            str(settings.owner_accounting_open_url),
-        )
-    )    
-    
-@router.callback_query(F.data == "back:roles:owner")
-async def back_to_roles_owner(callback: CallbackQuery):
-    await callback.answer()
-    await safe_edit(
-        callback.message,
-        start_message(),
-        reply_markup=owner_type_keyboard(
-            str(settings.owner_accounting_open_url),
-            str(settings.support_open_url)
-        )
-    )    
-    
+    nav = await get_nav(state)
+    if callback_data.role == "advertiser":
+        nav = nav.push("advertiser_type")
+        text, kb = screens.advertiser_type_screen(routing)
+    else:
+        nav = nav.push("owner_menu")
+        text, kb = screens.owner_menu_screen(routing)
 
-@router.callback_query(F.data == "back:roles")
-async def back_to_roles(callback: CallbackQuery):
-    await callback.answer()
-    await safe_edit(
-        callback.message,
-        start_message(),
-        reply_markup=role_keyboard(),
-    )
+    await set_nav(state, nav)
+    await safe_edit(cq.message, text, reply_markup=kb)
+
+
+@router.callback_query(NavCb.filter())
+async def on_nav(cq: CallbackQuery, callback_data: NavCb, state: FSMContext, routing: RoutingService):
+    await cq.answer()
+
+    nav = await get_nav(state)
+    if callback_data.action == "open":
+        nav = nav.push(callback_data.screen)
+    else:
+        nav = nav.back()
+    await set_nav(state, nav)
+
+    screen_fn = SCREEN_REGISTRY.get(nav.current, SCREEN_REGISTRY["roles"])
+    text, kb = screen_fn(routing)
+    await safe_edit(cq.message, text, reply_markup=kb)
+
+
+

@@ -4,6 +4,8 @@ from typing import Callable, Awaitable, Any
 from aiogram import Bot, Dispatcher
 from aiogram.types import TelegramObject
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from config import settings
 from di.container import build_container, Container
@@ -43,7 +45,10 @@ async def main() -> None:
     container = build_container()
     await on_startup(container)
 
-    bot = Bot(token=settings.bot_token)
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        )
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.update.middleware(DIMiddleware(container))

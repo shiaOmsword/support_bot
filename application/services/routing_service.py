@@ -23,11 +23,25 @@ class RoutingService:
         support_open_url:str,
     ):
         self._targets = {
-            ("channel_owner", None): RouteTarget(owner_deliver_chat_id, owner_open_url, owner_thread_id),
-            ("advertiser", "new"): RouteTarget(adv_new_deliver_chat_id, adv_new_open_url, adv_new_thread_id),
-            ("advertiser", "existing"): RouteTarget(adv_existing_deliver_chat_id, adv_existing_open_url, adv_existing_thread_id),
-            ("accounting", None):RouteTarget(None, owner_accounting_open_url, None),
-            ("support", None):RouteTarget(None, support_open_url, None),
+            ("channel_owner", None): RouteTarget(
+                open_url=owner_open_url , 
+                deliver_chat_id=owner_deliver_chat_id, 
+                thread_id=owner_thread_id
+                ),
+            ("advertiser", "new"): RouteTarget(
+                open_url=adv_new_open_url, 
+                deliver_chat_id=adv_new_deliver_chat_id,
+                thread_id=adv_new_thread_id
+                ),
+            ("advertiser", "existing"): RouteTarget(
+                open_url=adv_existing_open_url ,
+                deliver_chat_id=adv_existing_deliver_chat_id, 
+                thread_id=adv_existing_thread_id
+                ),
+            ("accounting", None):RouteTarget(
+                open_url=owner_accounting_open_url
+                ),
+            ("support", None):RouteTarget(open_url=support_open_url),
         }
 
     def get_target(self, role: UserRole, adv_type: AdvertiserType | None = None) -> RouteTarget:

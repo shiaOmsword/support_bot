@@ -37,6 +37,11 @@ def send_message_to_chat(initial_text:str, user_ref:str) -> str:
     )
     
 
+def send_message_to_old_adv() -> str:
+    return (
+        ""
+        ""
+    )
 def help_message() -> str:
     return (
         "Помощь по боту:\n\n"
