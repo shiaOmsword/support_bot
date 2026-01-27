@@ -5,7 +5,7 @@ from presentation.ui.callbacks import NavCb, RoleCb
 from application.services.routing_service import RoutingService
 
 def old_advertiser_type_screen(routing: RoutingService) -> tuple[str, InlineKeyboardMarkup]:
-    text = "Выбрите, пожалуйста к кому написать:"
+    text = "Выберите, пожалуйста, кому написать:"
     old_url1 = routing.get_target(UserRole.ADVERTISER, AdvertiserType.EXISTING).open_url
     old_url2 = routing.get_target(UserRole.CHANNEL_OWNER).open_url
     kb = build_kb(

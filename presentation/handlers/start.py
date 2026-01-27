@@ -9,34 +9,50 @@ from presentation.ui.callbacks import RoleCb, NavCb, ActCb
 from domain.enums import UserRole
 from presentation.texts.common import send_message_to_chat
 from presentation.ui.nav import get_nav, set_nav
-from presentation.ui.render import safe_edit
+from presentation.ui.send_ui import send_ui
 from presentation.ui import screens
 from presentation.texts.common import start_message, help_message, about_message
 from presentation.ui.screens import SCREEN_REGISTRY
+from presentation.ui.root_ui import ensure_root_message, edit_root_message
 
 router = Router()
 log = logging.getLogger(__name__)
 
-
 @router.message(F.text == "/start")
 async def start_cmd(message: Message, state: FSMContext):
+    # если это бизнес-диалог — сохраняем connection id
+    if message.business_connection_id:
+        await state.update_data(business_connection_id=message.business_connection_id)
+
     await state.update_data(nav_stack=["roles"])
     text, kb = screens.roles_screen()
-    await message.answer(start_message(), reply_markup=kb, disable_web_page_preview=True)
+    await message.answer(
+        start_message(),
+        reply_markup=kb,
+        disable_web_page_preview=True,
+    )
 
 
 @router.message(F.text == "/help")
-async def help_cmd(message: Message):
+async def help_cmd(message: Message, state: FSMContext):
+        # если это бизнес-диалог — сохраняем connection id
+    if message.business_connection_id:
+        await state.update_data(business_connection_id=message.business_connection_id)
     await message.answer(help_message())
 
 
 @router.message(F.text == "/about")
-async def about_cmd(message: Message):
+async def about_cmd(message: Message, state: FSMContext):
+    if message.business_connection_id:
+        await state.update_data(business_connection_id=message.business_connection_id)
     await message.answer(about_message())
 
-
+    
 @router.message()
 async def any_text_show_menu(message: Message, state: FSMContext):
+    if message.business_connection_id:
+        await state.update_data(business_connection_id=message.business_connection_id)
+            
     await state.update_data(nav_stack=["roles"])
     text, kb = screens.roles_screen()
     await message.answer("Выберите, куда перейти:", reply_markup=kb, disable_web_page_preview=True)
@@ -55,7 +71,13 @@ async def on_role(cq: CallbackQuery, callback_data: RoleCb, state: FSMContext, r
         text, kb = screens.owner_menu_screen(routing)
 
     await set_nav(state, nav)
-    await safe_edit(cq.message, text, reply_markup=kb)
+    await send_ui(
+        bot = cq.bot,
+        message = cq.message,
+        state = state,
+        text = text,
+        reply_markup=kb,
+        )
 
 
 @router.callback_query(NavCb.filter())
@@ -71,7 +93,14 @@ async def on_nav(cq: CallbackQuery, callback_data: NavCb, state: FSMContext, rou
 
     screen_fn = SCREEN_REGISTRY.get(nav.current, SCREEN_REGISTRY["roles"])
     text, kb = screen_fn(routing)
-    await safe_edit(cq.message, text, reply_markup=kb)
+    
+    await send_ui(
+        bot = cq.bot,
+        message = cq.message,
+        state = state,
+        text = text,
+        reply_markup=kb,
+        )
 
 
 
