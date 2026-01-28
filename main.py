@@ -41,13 +41,11 @@ class DIMiddleware:
         data["bot_state_repo"] = self._container.bot_state_repo
         return await handler(event, data)
 
-async def on_startup(container: Container) -> None:
-    async with container.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+
 
 async def main() -> None:
     container = build_container()
-    await on_startup(container)
+    #await on_startup(container)
 
     bot = Bot(
         token=settings.bot_token,

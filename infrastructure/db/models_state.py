@@ -21,6 +21,7 @@ class UserStateModel(Base):
 
     # бизнес-режим
     business_connection_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    blocked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class BotStateModel(Base):

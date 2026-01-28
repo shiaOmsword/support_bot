@@ -58,6 +58,10 @@ class SupportGateMiddleware(BaseMiddleware):
                 return None
 
             st = await self.user_repo.get_or_create(session, user_id=user_id, username=username)
+            blocked_until = ensure_aware_utc(getattr(st, "blocked_until", None))
+            if blocked_until and now < blocked_until:
+                # блокировка режет вообще всё, включая команды
+                return None            
 
             bc_id = getattr(event, "business_connection_id", None)
             if bc_id:

@@ -8,6 +8,24 @@ from infrastructure.db.models_state import UserStateModel, BotStateModel
 
 
 class UserStateRepository:
+    async def get(self, session: AsyncSession, *, user_id: int) -> UserStateModel | None:
+        return await session.get(UserStateModel, user_id)
+
+    async def get_by_username(self, session: AsyncSession, *, username: str) -> UserStateModel | None:
+        # username храним без "@"
+        username = username.lstrip("@")
+        q = await session.execute(
+            select(UserStateModel).where(UserStateModel.username == username).limit(1)
+        )
+        return q.scalar_one_or_none()
+
+    async def set_blocked_until(self, session: AsyncSession, *, user_id: int, blocked_until) -> None:
+        obj = await session.get(UserStateModel, user_id)
+        if not obj:
+            obj = UserStateModel(user_id=user_id, username=None)
+            session.add(obj)
+        obj.blocked_until = blocked_until
+            
     async def get_or_create(self, session: AsyncSession, *, user_id: int, username: str | None) -> UserStateModel:
         obj = await session.get(UserStateModel, user_id)
         if obj:

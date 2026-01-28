@@ -9,6 +9,7 @@ from aiogram.fsm.context import FSMContext
 from config import settings
 from infrastructure.db.uow import UnitOfWork
 from infrastructure.db.state_repo import UserStateRepository, BotStateRepository
+from typing import Tuple
 
 router = Router()
 log = logging.getLogger(__name__)
@@ -17,6 +18,14 @@ log = logging.getLogger(__name__)
 def _is_admin(message: Message) -> bool:
     return bool(message.from_user) and message.from_user.id in settings.admin_ids
 
+def _parse_target(s: str) -> tuple[str, str]:
+    """
+    Возвращает ("id", "123") или ("username", "vasya")
+    """
+    s = s.strip()
+    if s.startswith("@"):
+        return ("username", s.lstrip("@"))
+    return ("id", s)
 
 def _parse_duration_to_seconds(arg: str) -> int:
     """
@@ -181,3 +190,132 @@ async def unmute_user_cmd(
         await user_state_repo.set_muted_until(session, user_id=user_id, muted_until=None)
 
     await message.answer(f"Ок. Размьютил user_id={user_id} ✅")
+
+
+@router.business_message(Command("user"))
+@router.message(Command("user"))
+async def user_status_cmd(
+    message: Message,
+    uow: UnitOfWork,
+    user_state_repo: UserStateRepository,
+):
+    if not _is_admin(message):
+        return
+
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Использование: /user <user_id>  или  /user @username")
+        return
+
+    kind, val = _parse_target(parts[1])
+
+    async with uow.session() as session:
+        if kind == "id":
+            try:
+                user_id = int(val)
+            except ValueError:
+                await message.answer("user_id должен быть числом. Или укажи @username.")
+                return
+            st = await user_state_repo.get(session, user_id=user_id)
+        else:
+            st = await user_state_repo.get_by_username(session, username=val)
+
+    if not st:
+        await message.answer("Не нашёл пользователя в базе (он ещё не писал боту).")
+        return
+
+    muted = st.muted_until.isoformat() if st.muted_until else "нет"
+    blocked = st.blocked_until.isoformat() if getattr(st, "blocked_until", None) else "нет"
+    await message.answer(
+        "Состояние пользователя:\n"
+        f"user_id: {st.user_id}\n"
+        f"username: @{st.username}" if st.username else f"user_id: {st.user_id}\nusername: нет"
+    )
+    await message.answer(
+        f"muted_until: {muted}\n"
+        f"blocked_until: {blocked}\n"
+        f"menu_message_id: {st.menu_message_id or 'нет'}\n"
+        f"business_connection_id: {st.business_connection_id or 'нет'}"
+    )
+    
+    
+@router.business_message(Command("block"))
+@router.message(Command("block"))
+async def block_cmd(
+    message: Message,
+    uow: UnitOfWork,
+    user_state_repo: UserStateRepository,
+):
+    if not _is_admin(message):
+        return
+
+    parts = (message.text or "").split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /block <user_id|@username> 5h  |  /block 123456 15m")
+        return
+
+    kind, val = _parse_target(parts[1])
+
+    try:
+        seconds = _parse_duration_to_seconds(parts[2])
+    except ValueError:
+        await message.answer("Не понял длительность. Примеры: 15m, 2h, 1d, 300")
+        return
+
+    now = datetime.now(timezone.utc)
+    blocked_until = now + timedelta(seconds=seconds)
+
+    async with uow.session() as session:
+        if kind == "id":
+            try:
+                user_id = int(val)
+            except ValueError:
+                await message.answer("user_id должен быть числом. Или укажи @username.")
+                return
+            await user_state_repo.set_blocked_until(session, user_id=user_id, blocked_until=blocked_until)
+        else:
+            st = await user_state_repo.get_by_username(session, username=val)
+            if not st:
+                await message.answer("Не нашёл этого @username в базе (он ещё не писал боту).")
+                return
+            await user_state_repo.set_blocked_until(session, user_id=st.user_id, blocked_until=blocked_until)
+            user_id = st.user_id
+
+    await message.answer(f"Ок. Заблокировал user_id={user_id} до {blocked_until.isoformat()}")
+    
+    
+@router.business_message(Command("unblock"))
+@router.message(Command("unblock"))
+async def unblock_cmd(
+    message: Message,
+    uow: UnitOfWork,
+    user_state_repo: UserStateRepository,
+):
+    if not _is_admin(message):
+        return
+
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Использование: /unblock <user_id|@username>")
+        return
+
+    kind, val = _parse_target(parts[1])
+
+    async with uow.session() as session:
+        if kind == "id":
+            try:
+                user_id = int(val)
+            except ValueError:
+                await message.answer("user_id должен быть числом. Или укажи @username.")
+                return
+            await user_state_repo.set_blocked_until(session, user_id=user_id, blocked_until=None)
+        else:
+            st = await user_state_repo.get_by_username(session, username=val)
+            if not st:
+                await message.answer("Не нашёл этого @username в базе.")
+                return
+            await user_state_repo.set_blocked_until(session, user_id=st.user_id, blocked_until=None)
+            user_id = st.user_id
+
+    await message.answer(f"Ок. Разблокировал user_id={user_id} ✅")
+        
