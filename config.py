@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyUrl, Field
+from pydantic import AnyUrl, Field, field_validator
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -8,6 +8,16 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="forbid",
     )
+
+    
+    admin_ids_raw: str = Field(default="", alias="ADMIN_IDS")
+    default_mute_seconds: int = Field(default=18000, alias="DEFAULT_MUTE_SECONDS")
+    
+    @property
+    def admin_ids(self) -> set[int]:
+        if not self.admin_ids_raw.strip():
+            return set()
+        return {int(x.strip()) for x in self.admin_ids_raw.split(",") if x.strip()}
 
     bot_token: str = Field(alias="BOT_TOKEN")
     database_url: str = Field(alias="DATABASE_URL")

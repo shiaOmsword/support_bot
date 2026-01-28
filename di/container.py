@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from config import settings
 from infrastructure.db.uow import UnitOfWork
 from infrastructure.db.repo import UserChoiceRepository
+from infrastructure.db.state_repo import UserStateRepository, BotStateRepository
 from application.services.routing_service import RoutingService
 
 @dataclass(frozen=True)
@@ -13,6 +14,8 @@ class Container:
     uow: UnitOfWork
     repo: UserChoiceRepository
     routing: RoutingService
+    user_state_repo: UserStateRepository
+    bot_state_repo: BotStateRepository
 
 def build_container() -> Container:
     engine = create_async_engine(settings.database_url, echo=False)
@@ -20,7 +23,9 @@ def build_container() -> Container:
 
     uow = UnitOfWork(session_factory)
     repo = UserChoiceRepository()
-
+    user_state_repo = UserStateRepository()
+    bot_state_repo = BotStateRepository()
+    
     routing = RoutingService(
         owner_deliver_chat_id=settings.owner_deliver_chat_id,
         owner_open_url=str(settings.owner_open_url),
@@ -43,4 +48,6 @@ def build_container() -> Container:
         uow=uow,
         repo=repo,
         routing=routing,
+        user_state_repo=user_state_repo,
+        bot_state_repo=bot_state_repo,
     )
